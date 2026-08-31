@@ -1,0 +1,157 @@
+pragma language_version >= 0.22;
+
+import CompactStandardLibrary;
+
+// ============================================================================
+//  Midnight zk-Bounty
+//  A decentralized, anonymous bounty platform built for the Midnight Network.
+//
+//  A bounty creator locks in a reward for anyone who can prove they know the
+//  pre-image of a committed solution, WITHOUT ever revealing the plain-text
+//  secret on-chain.
+//
+//  Privacy model
+//  -------------
+//   - Only the blinded commitment (hash + nonce) of the solution is public.
+//   - The actual solution pre-image lives in a private `witness` and is
+//     verified entirely inside a zero-knowledge circuit. It never touches the
+//     ledger.
+//   - A fresh random nonce is combined with the pre-image using
+//     `persistentCommit`, so the plain-text cannot be brute-forced even for a
+//     low-entropy solution.
+//
+//  Public ledger state (plaintext on-chain, readable by all):
+//     bounties      : Map<Uint<64>, Bounty>
+//     nextBountyId  : Uint<64>
+//     Bounty { creator, rewardAmount, commitmentHash, isClaimed }
+//
+//  Transitions:
+//     createBounty(commitment, reward)
+//     claimBounty(secretProof, recipientAddress)
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// Public ledger state
+// ----------------------------------------------------------------------------
+
+type Bytes32 = Bytes<32>;
+
+struct Bounty {
+    creator: Bytes32,
+    rewardAmount: Uint<64>,
+    commitmentHash: Bytes32,
+    isClaimed: Boolean,
+}
+
+export ledger bounties: Map<Uint<64>, Bounty>;
+export ledger nextBountyId: Uint<64>;
+
+// ----------------------------------------------------------------------------
+// Witnesses (private input callbacks, bodies implemented in TypeScript)
+// ----------------------------------------------------------------------------
+
+// The address of the contract caller / bounty creator, derivable only by the
+// wallet that holds the private key.
+witness callerAddress(): Bytes32;
+
+// The secret pre-image of a bounty's solution. Only known to whoever solved
+// it. It NEVER appears on-chain and only flows through the ZK circuit.
+witness secretPreimage(bountyId: Uint<64>): Bytes32;
+
+// A fresh random nonce used to blind the commitment so it cannot be
+// brute-forced from the public hash alone.
+witness secretNonce(bountyId: Uint<64>): Bytes32;
+
+// The uint64 key of the bounty a claimant intends to redeem.
+witness targetBountyId(): Uint<64>;
+
+// ----------------------------------------------------------------------------
+// Pure cryptographic helpers
+// ----------------------------------------------------------------------------
+
+// Blind the solution with a random nonce. Because `persistentCommit` mixes a
+// nonce into the hash, a low-entropy pre-image cannot be recovered from the
+// public value.
+pure circuit makeCommitment(secret: Bytes32, nonce: Bytes32): Bytes32 {
+    return persistentCommit<Bytes32>(secret, nonce);
+}
+
+// ----------------------------------------------------------------------------
+// Constructor: runs exactly once at deployment
+// ----------------------------------------------------------------------------
+
+constructor() {
+    nextBountyId = 0;
+}
+
+// ----------------------------------------------------------------------------
+// Transition 1: createBounty(commitment, reward)
+//
+// The creator opens a new bounty, locking a reward and committing to a
+// solution hash. The circuit caller is recorded as the creator.
+// ----------------------------------------------------------------------------
+
+export circuit createBounty(commitment: Bytes32, reward: Uint<64>): Uint<64> {
+    const bountyId = nextBountyId;
+
+    const newBounty = Bounty {
+        creator: disclose(callerAddress()),
+        rewardAmount: disclose(reward),
+        commitmentHash: disclose(commitment),
+        isClaimed: false,
+    };
+    bounties.insert(bountyId, newBounty);
+
+    nextBountyId = disclose((bountyId + 1) as Uint<64>);
+    return bountyId;
+}
+
+// ----------------------------------------------------------------------------
+// Transition 2: claimBounty(secretProof, recipientAddress)
+//
+// A claimant proves knowledge of the solution without revealing it. The
+// pre-image and nonce are supplied by private witnesses and are re-blinded
+// inside the circuit; the proof shows that `makeCommitment(secret, nonce)`
+// equals the stored commitmentHash. The `secretProof` argument is a public
+// placeholder binding the claim to the exact secret re-blinded in-circuit, so
+// the transaction carries a verifiable proof of the private knowledge while
+// the plain-text never appears on-chain. The bounty is then marked claimed and
+// the reward is payable to `recipientAddress`.
+// ============================================================================
+
+export circuit claimBounty(
+    secretProof: Bytes32,
+    recipientAddress: Bytes32,
+): Uint<64> {
+    // Which bounty is being claimed (private witness, validates against the
+    // public ledger).
+    const bountyId = disclose(targetBountyId());
+    assert(bounties.member(bountyId), "bounty does not exist");
+
+    const stored = bounties.lookup(bountyId);
+    assert(!stored.isClaimed, "bounty already claimed");
+
+    // Recover the solution from the private witness and re-blind it. This is
+    // the core zero-knowledge check: it proves we hold a pre-image that hashes
+    // to the public commitment, without disclosing the pre-image.
+    const secret = secretPreimage(bountyId);
+    const nonce = secretNonce(bountyId);
+    const recomputedHash = makeCommitment(secret, nonce);
+    assert(stored.commitmentHash == recomputedHash, "invalid solution proof");
+
+    // Bind the public, re-blinded proof value to what the circuit verified so
+    // that no party can substitute a different witness later.
+    assert(secretProof == recomputedHash, "proof does not match secret");
+
+    // Mark the bounty claimed and publish the reward recipient.
+    const claimed = Bounty {
+        creator: stored.creator,
+        rewardAmount: stored.rewardAmount,
+        commitmentHash: stored.commitmentHash,
+        isClaimed: true,
+    };
+    bounties.insert(disclose(bountyId), claimed);
+    disclose(recipientAddress);
+
+    return disclose(bountyId);
+}

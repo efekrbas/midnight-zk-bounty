@@ -1,0 +1,32 @@
+{
+  "name": "@midnight-zk-bounty/contract",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "compact": "wsl -e bash -lc \"cd '/mnt/c/Users/priyal Raut/OneDrive/Desktop/midnight-zk-bounty/contract' && compact compile src/bounty.compact src/managed/bounty\"",
+    "test": "node --experimental-vm-modules node_modules/vitest/vitest.mjs run",
+    "test:compile": "npm run compact && node --experimental-vm-modules node_modules/vitest/vitest.mjs run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
