@@ -13,30 +13,85 @@ import {
   Check,
   RefreshCw,
   Sparkles,
+  ShieldAlert,
+  ChevronRight,
 } from "lucide-react";
 import { persistentCommit, generateRandomNonce } from "@/lib/zk";
 import { toast } from "sonner";
+
+interface ShowcaseChallenge {
+  id: string;
+  targetId: string;
+  title: string;
+  description: string;
+  reward: number;
+  validSecret: string;
+  nonce: string;
+}
+
+const SHOWCASE_CHALLENGES: ShowcaseChallenge[] = [
+  {
+    id: "challenge-1",
+    targetId: "#001",
+    title: "Halo2 Soundness Challenge",
+    description:
+      "Prove knowledge of the secret pre-image that yields the on-chain commitment below. The Compact smart contract verifies your proof without exposing the plaintext secret.",
+    reward: 1250,
+    validSecret: "halo2-soundness-break-seed-409",
+    nonce: "nonce-c781a9f0",
+  },
+  {
+    id: "challenge-2",
+    targetId: "#002",
+    title: "Nullifier Collision Resistance",
+    description:
+      "Provide cryptographic witness proving pre-image membership in the Midnight Shielded Pool without leaking private UTXO coin identifiers.",
+    reward: 1850,
+    validSecret: "nullifier-collision-target-99",
+    nonce: "nonce-f8a1290b",
+  },
+  {
+    id: "challenge-3",
+    targetId: "#003",
+    title: "Stealth Relay Node Attestation",
+    description:
+      "Verify zero-knowledge proof of validator enclave signature authenticity without disclosing relay IP routing metadata.",
+    reward: 3400,
+    validSecret: "stealth-node-attestation-2026",
+    nonce: "nonce-48bb2201",
+  },
+];
 
 export function HeroBountyShowcase({
   onRewardClaimed,
 }: {
   onRewardClaimed?: (amountStars: bigint) => void;
 }) {
-  const [secretInput, setSecretInput] = useState("halo2-soundness-break-seed-409");
-  const [nonce] = useState("nonce-c781a9f0");
+  const [challengeIdx, setChallengeIdx] = useState(0);
+  const challenge = SHOWCASE_CHALLENGES[challengeIdx];
+
+  const [secretInput, setSecretInput] = useState(challenge.validSecret);
   const [isProving, setIsProving] = useState(false);
   const [isSolved, setIsSolved] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const targetCommitment = useMemo(() => {
-    return persistentCommit("halo2-soundness-break-seed-409", "nonce-c781a9f0");
-  }, []);
+    return persistentCommit(challenge.validSecret, challenge.nonce);
+  }, [challenge]);
 
   const liveCommitment = useMemo(() => {
-    return persistentCommit(secretInput || "empty", nonce);
-  }, [secretInput, nonce]);
+    return persistentCommit(secretInput || "empty", challenge.nonce);
+  }, [secretInput, challenge.nonce]);
 
   const isMatch = liveCommitment === targetCommitment;
+
+  function switchChallenge(nextIdx: number) {
+    const validNextIdx = (nextIdx + SHOWCASE_CHALLENGES.length) % SHOWCASE_CHALLENGES.length;
+    setChallengeIdx(validNextIdx);
+    const nextChallenge = SHOWCASE_CHALLENGES[validNextIdx];
+    setSecretInput(nextChallenge.validSecret);
+    setIsSolved(false);
+  }
 
   async function handleSimulateProof() {
     if (!secretInput.trim()) return;
@@ -48,27 +103,31 @@ export function HeroBountyShowcase({
     setIsProving(false);
     if (isMatch) {
       setIsSolved(true);
-      // Dispatch live balance update to connected wallet!
-      onRewardClaimed?.(1_250_000_000n); // 1,250 tDUST
+      onRewardClaimed?.(BigInt(challenge.reward) * 1_000_000n);
       toast.success("Zero-Knowledge Proof Verified on Midnight", {
-        description: "Contract validated persistentCommit proof without seeing plaintext secret. +1,250 tDUST unlocked into your wallet!",
+        description: `Contract validated persistentCommit proof without seeing plaintext secret. +${challenge.reward.toLocaleString()} tDUST unlocked!`,
       });
     } else {
-      toast.error("Constraint Satisfaction Failed", {
-        description: "The secret pre-image does not match the on-chain commitment hash.",
+      toast.error("Constraint Satisfaction Failed (Soundness Enforced)", {
+        description:
+          "Zero-Knowledge circuit rejected the wrong pre-image. The escrow reward remains safe in the smart contract.",
       });
     }
   }
 
-  function handleQuickSolve() {
-    setSecretInput("halo2-soundness-break-seed-409");
+  function handleAutoFillValid() {
+    setSecretInput(challenge.validSecret);
     setIsSolved(false);
-    toast.info("Preset solution pre-image loaded");
+    toast.success("Loaded valid solution pre-image for this challenge");
   }
 
-  function handleRandomize() {
-    setSecretInput(`seed-${generateRandomNonce().slice(0, 10)}`);
+  function handleSimulateAttack() {
+    const fakeSeed = `attacker-guess-${generateRandomNonce().slice(0, 8)}`;
+    setSecretInput(fakeSeed);
     setIsSolved(false);
+    toast.info("Simulating unauthorized attacker guess (wrong pre-image)", {
+      description: "Click 'Verify Pre-image' to test that the ZK circuit rejects it.",
+    });
   }
 
   function handleCopy() {
@@ -97,25 +156,37 @@ export function HeroBountyShowcase({
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Target ID: <span className="font-mono text-slate-300">#001</span> · Preprod Testnet
+              Target ID: <span className="font-mono text-slate-300">{challenge.targetId}</span> · Preprod Testnet
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-1.5">
-          <span className="text-xs text-slate-400">Reward:</span>
-          <span className="font-mono text-xs font-bold text-cyan-400">1,250 tDUST</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => switchChallenge(challengeIdx + 1)}
+            className="rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/10 px-2 py-1 text-[11px] text-slate-300 transition-colors flex items-center gap-1"
+            title="Switch Challenge"
+          >
+            <span>Next ({challengeIdx + 1}/3)</span>
+            <ChevronRight className="size-3" />
+          </button>
+          <div className="flex items-center gap-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-1.5">
+            <span className="text-xs text-slate-400">Reward:</span>
+            <span className="font-mono text-xs font-bold text-cyan-400">
+              {challenge.reward.toLocaleString()} tDUST
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Challenge Description */}
       <div className="mt-5">
         <h4 className="text-base font-bold text-white">
-          Halo2 Soundness Challenge
+          {challenge.title}
         </h4>
         <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
-          Prove knowledge of the secret pre-image that yields the on-chain commitment below. The
-          Compact smart contract verifies your proof without exposing the plaintext secret.
+          {challenge.description}
         </p>
       </div>
 
@@ -157,19 +228,21 @@ export function HeroBountyShowcase({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleQuickSolve}
-              className="font-mono text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
+              onClick={handleAutoFillValid}
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
             >
-              Fill Valid
+              <Sparkles className="size-3" />
+              <span>Fill Valid</span>
             </button>
             <span className="text-slate-600">|</span>
             <button
               type="button"
-              onClick={handleRandomize}
-              className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-400 hover:text-slate-300 transition-colors"
+              onClick={handleSimulateAttack}
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-amber-400 hover:text-amber-300 transition-colors"
+              title="Test invalid guess to show ZK circuit protection"
             >
-              <RefreshCw className="size-3" />
-              Random
+              <ShieldAlert className="size-3" />
+              <span>Test Wrong Guess</span>
             </button>
           </div>
         </div>
@@ -227,17 +300,17 @@ export function HeroBountyShowcase({
           ) : isSolved ? (
             <>
               <Unlock className="size-4 text-emerald-400" />
-              <span>ZK Proof Verified · Escrow Claimed! (+1,250 tDUST)</span>
+              <span>ZK Proof Verified · Escrow Claimed! (+{challenge.reward.toLocaleString()} tDUST)</span>
             </>
           ) : isMatch ? (
             <>
               <Zap className="size-4" />
-              <span>Synthesize Halo2 Proof & Claim Escrow (+1,250 tDUST)</span>
+              <span>Synthesize Halo2 Proof & Claim Escrow (+{challenge.reward.toLocaleString()} tDUST)</span>
             </>
           ) : (
             <>
               <Lock className="size-4" />
-              <span>Verify Pre-image & Synthesize ZK Proof</span>
+              <span>Verify Pre-image & Test ZK Constraint Rejection</span>
             </>
           )}
         </button>

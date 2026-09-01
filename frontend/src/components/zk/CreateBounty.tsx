@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Lock, Loader2, Check, Zap, RefreshCw, Key, ShieldCheck, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { persistentCommit, generateRandomNonce, type Bounty } from "@/lib/zk";
+import { type WalletState } from "@/lib/midnight-wallet";
 
 function ScrambleHash({ value }: { value: string }) {
   const [shown, setShown] = useState(value);
@@ -26,10 +27,10 @@ function ScrambleHash({ value }: { value: string }) {
 }
 
 export function CreateBounty({
-  connected,
+  wallet,
   onBountyCreated,
 }: {
-  connected: boolean;
+  wallet: WalletState;
   onBountyCreated?: (bounty: Bounty) => void;
 }) {
   const [title, setTitle] = useState("");
@@ -52,7 +53,7 @@ export function CreateBounty({
   }
 
   async function publish() {
-    if (!connected) {
+    if (!wallet) {
       toast.error("Please connect your Midnight 1AM / Lace wallet first");
       return;
     }
@@ -62,6 +63,13 @@ export function CreateBounty({
     }
 
     const rewardNum = Number(reward) || 500;
+    const rewardStars = BigInt(rewardNum) * 1_000_000n;
+
+    if (wallet.balanceStars < rewardStars) {
+      toast.error(`Insufficient balance: You need ${rewardNum} tDUST to fund this escrow.`);
+      return;
+    }
+
     setState("signing");
     toast.loading("Invoking createBounty() on Midnight Preprod…", { id: "publish" });
 
@@ -73,8 +81,9 @@ export function CreateBounty({
       title,
       description: description || "Zero-Knowledge pre-image proof verification challenge.",
       rewardFormatted: rewardNum,
-      rewardStars: BigInt(rewardNum) * 1_000_000n,
-      creator: "0x39a1fe881c20bb99a1",
+      rewardStars,
+      creator: wallet.address,
+      nonce,
       expiresAt: Date.now() + 86400000 * 7,
       circuit: circuitType === "halo2-bn254" ? "Halo2-BN254" : "Compact-ZK",
       constraints: circuitType === "halo2-bn254" ? 16384 : 32768,
@@ -108,190 +117,192 @@ export function CreateBounty({
   return (
     <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
       {/* Form Container */}
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0d111a]/85 p-6 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
-          <div>
-            <h2 className="text-base font-semibold text-white">
-              Deploy Shielded Bounty
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-400">
-              Lock reward funds in a Compact zero-knowledge escrow contract.
-            </p>
+      <div className="rounded-3xl border border-white/10 bg-[#0d111a]/80 p-6 sm:p-8 backdrop-blur-xl shadow-xl">
+        <div className="flex items-center justify-between pb-6 border-b border-white/[0.08]">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+              <Zap className="size-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Create Shielded Bounty</h2>
+              <p className="text-xs text-slate-400">Lock escrow with persistentCommit(secret, nonce)</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={randomizeSecretAndNonce}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs text-cyan-400 hover:bg-white/[0.08] transition-colors"
-            title="Generate Random Secret & Salt"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] px-3 py-1.5 text-xs text-slate-300 transition-colors"
           >
-            <RefreshCw className="size-3" /> Randomize
+            <RefreshCw className="size-3.5 text-cyan-400" />
+            <span>Generate Random Secret</span>
           </button>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-slate-300">
-              Bounty Title
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Bounty Title *
             </label>
             <input
-              className={fieldClass}
+              type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Recursive Halo2 Circuit Vulnerability Challenge"
+              placeholder="e.g. BLS12-381 Signature Aggregation Circuit Exploit"
+              className={fieldClass}
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-300">
-              Challenge Description & Rules
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Challenge Description
             </label>
             <textarea
-              rows={3}
-              className={`${fieldClass} resize-none`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detail the puzzle, constraint system, and criteria for solving…"
+              placeholder="Detail the cryptographic vulnerability, constraint requirements, or test vectors…"
+              rows={3}
+              className={fieldClass}
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-slate-300">
-                Reward Amount (tDUST)
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Escrow Reward (tDUST) *
               </label>
               <input
-                className={`${fieldClass} font-mono`}
+                type="number"
                 value={reward}
-                inputMode="numeric"
-                onChange={(e) => setReward(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="500"
+                onChange={(e) => setReward(e.target.value)}
+                min="10"
+                step="50"
+                className={fieldClass}
               />
             </div>
+
             <div>
-              <label className="text-xs font-medium text-slate-300">
-                ZK Prover Circuit
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                Proof Engine Circuit
               </label>
               <select
-                className={`${fieldClass} font-mono`}
                 value={circuitType}
                 onChange={(e) => setCircuitType(e.target.value as any)}
+                className={fieldClass}
               >
-                <option value="halo2-bn254">Halo2 BN254 (16k rows)</option>
-                <option value="compact-zk">Compact-ZK Plonk (32k rows)</option>
+                <option value="halo2-bn254">Halo2-BN254 (16,384 gates)</option>
+                <option value="compact-zk">Compact-ZK v0.22 (32,768 gates)</option>
               </select>
             </div>
           </div>
 
-          <div>
+          <div className="pt-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-300">
-                Secret Solution Pre-Image
+              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Key className="size-3.5 text-cyan-400" />
+                Secret Solution Pre-image (Keep Private) *
               </label>
-              <span className="text-[11px] text-emerald-400 font-medium">100% Private (Never On-Chain)</span>
+              <span className="text-[10px] text-slate-500 font-mono">Plaintext NEVER sent on-chain</span>
             </div>
             <input
-              className={`${fieldClass} font-mono`}
+              type="text"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
-              placeholder="Enter secret answer / pre-image seed…"
+              placeholder="Type or generate the solution secret pre-image…"
+              className={fieldClass}
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-300">
-              Blinding Salt Nonce
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Salt Nonce (Cryptographic Blinding Factor)
             </label>
             <input
-              className={`${fieldClass} font-mono text-xs text-slate-400`}
+              type="text"
               value={nonce}
               onChange={(e) => setNonce(e.target.value)}
-              placeholder="Cryptographic salt nonce"
+              className={`${fieldClass} font-mono text-slate-400`}
             />
           </div>
-        </div>
 
-        <button
-          onClick={publish}
-          disabled={state === "signing"}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold py-3 px-4 text-xs transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
-        >
-          {state === "signing" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : state === "done" ? (
-            <Check className="size-4 text-slate-950" />
-          ) : (
-            <Lock className="size-4" />
-          )}
-          {state === "signing"
-            ? "Broadcasting createBounty() Transaction…"
-            : state === "done"
-              ? "Bounty Escrow Confirmed on Midnight"
-              : "Publish Bounty & Lock Escrow Funds"}
-        </button>
+          <div className="pt-4">
+            <button
+              type="button"
+              onClick={publish}
+              disabled={state === "signing"}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 py-3.5 px-4 text-xs font-bold text-slate-950 transition-all shadow-lg shadow-cyan-500/20 active:scale-98 disabled:opacity-60 cursor-pointer"
+            >
+              {state === "signing" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>Submitting Escrow Transaction to Midnight…</span>
+                </>
+              ) : state === "done" ? (
+                <>
+                  <Check className="size-4 text-emerald-950" />
+                  <span>Bounty Deployed & Escrow Locked!</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="size-4" />
+                  <span>Deploy Shielded Bounty ({reward} tDUST Escrow)</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Live Cryptographic Preview Console */}
-      <div className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#0d111a]/85 p-6 shadow-2xl backdrop-blur-xl">
-        <div>
-          <div className="flex items-center gap-2.5 pb-4 border-b border-white/[0.06]">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              <Zap className="size-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white">
-                Persistent Commitment Synthesis
-              </h3>
-              <p className="font-mono text-[11px] text-slate-400">
-                persistentCommit&lt;Bytes32&gt;(secret, nonce)
-              </p>
-            </div>
-          </div>
+      {/* Live On-Chain Commitment Preview Card */}
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-white/10 bg-[#0d111a]/80 p-6 backdrop-blur-xl shadow-xl">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <ShieldCheck className="size-4 text-emerald-400" />
+            Zero-Knowledge Commitment Telemetry
+          </h3>
 
-          <div className="mt-5 space-y-4">
-            <div className="rounded-xl bg-black/40 border border-white/[0.06] p-3">
-              <span className="text-[10px] uppercase text-slate-500 block">
-                Public Commitment Hash (On-Chain)
-              </span>
-              <div className="mt-1.5">
+          <div className="mt-4 space-y-3">
+            <div className="rounded-2xl border border-white/[0.06] bg-black/40 p-4">
+              <p className="text-[10px] uppercase font-mono text-slate-500">
+                On-Chain Commitment Hash (Public State)
+              </p>
+              <div className="mt-1.5 flex items-center justify-between gap-2">
                 <ScrambleHash value={commitment} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`0x${commitment}`);
+                    toast.success("Commitment copied");
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
+                >
+                  <Copy className="size-3.5" />
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
-                <span className="text-[10px] uppercase text-slate-500 block">
-                  Secret Pre-image
+            <div className="rounded-2xl border border-white/[0.06] bg-black/40 p-4 space-y-2 text-xs font-mono">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Creator Address:</span>
+                <span className="text-slate-300">
+                  {wallet ? `${wallet.address.slice(0, 10)}…${wallet.address.slice(-6)}` : "Wallet Not Connected"}
                 </span>
-                <p className="mt-1 font-mono text-xs text-white">
-                  {secret ? `${secret.length} bytes` : "Empty (0 b)"}
-                </p>
               </div>
-
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
-                <span className="text-[10px] uppercase text-slate-500 block">
-                  Circuit Gates
+              <div className="flex justify-between">
+                <span className="text-slate-500">Escrow Value:</span>
+                <span className="text-cyan-400 font-bold">{reward || 0} tDUST</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Circuit Constraints:</span>
+                <span className="text-indigo-400">
+                  {circuitType === "halo2-bn254" ? "16,384 gates" : "32,768 gates"}
                 </span>
-                <p className="mt-1 font-mono text-xs text-indigo-300">
-                  {circuitType === "halo2-bn254" ? "16,384 R1CS" : "32,768 PLONK"}
-                </p>
               </div>
-            </div>
-
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-slate-400">
-              <p className="flex items-center gap-1.5 font-medium text-slate-200">
-                <ShieldCheck className="size-3.5 text-emerald-400" />
-                Zero Knowledge Guarantee:
-              </p>
-              <p className="mt-1 leading-relaxed text-[11px]">
-                Because <code className="text-cyan-300">persistentCommit</code> hashes your solution with a 256-bit blinding nonce, the public ledger cannot brute-force the answer even for simple secrets.
-              </p>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Privacy Verification:</span>
+                <span className="text-emerald-400">persistentCommit</span>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="mt-6 border-t border-white/[0.06] pt-3.5 font-mono text-[11px] text-emerald-400 flex items-center gap-2">
-          <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Local Witness Ready · Proof Server :6300 Active</span>
         </div>
       </div>
     </div>

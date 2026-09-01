@@ -340,7 +340,7 @@ export default function Home() {
 
                 {tab === "create" && (
                   <CreateBounty
-                    connected={!!wallet}
+                    wallet={wallet}
                     onBountyCreated={handleBountyCreated}
                   />
                 )}
