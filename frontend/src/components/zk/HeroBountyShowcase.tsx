@@ -12,11 +12,16 @@ import {
   Loader2,
   Check,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { persistentCommit, generateRandomNonce } from "@/lib/zk";
 import { toast } from "sonner";
 
-export function HeroBountyShowcase() {
+export function HeroBountyShowcase({
+  onRewardClaimed,
+}: {
+  onRewardClaimed?: (amountStars: bigint) => void;
+}) {
   const [secretInput, setSecretInput] = useState("halo2-soundness-break-seed-409");
   const [nonce] = useState("nonce-c781a9f0");
   const [isProving, setIsProving] = useState(false);
@@ -43,8 +48,10 @@ export function HeroBountyShowcase() {
     setIsProving(false);
     if (isMatch) {
       setIsSolved(true);
+      // Dispatch live balance update to connected wallet!
+      onRewardClaimed?.(1_250_000_000n); // 1,250 tDUST
       toast.success("Zero-Knowledge Proof Verified on Midnight", {
-        description: "Contract validated persistentCommit proof without seeing plaintext secret. +1,250 tDUST unlocked!",
+        description: "Contract validated persistentCommit proof without seeing plaintext secret. +1,250 tDUST unlocked into your wallet!",
       });
     } else {
       toast.error("Constraint Satisfaction Failed", {
@@ -102,52 +109,56 @@ export function HeroBountyShowcase() {
       </div>
 
       {/* Challenge Description */}
-      <div className="mt-4">
-        <h4 className="text-base font-semibold text-white">
+      <div className="mt-5">
+        <h4 className="text-base font-bold text-white">
           Halo2 Soundness Challenge
         </h4>
-        <p className="mt-1 text-xs leading-relaxed text-slate-400">
-          Prove knowledge of the secret pre-image that yields the on-chain commitment below.
-          The Compact smart contract verifies your proof without exposing the plaintext secret.
+        <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+          Prove knowledge of the secret pre-image that yields the on-chain commitment below. The
+          Compact smart contract verifies your proof without exposing the plaintext secret.
         </p>
       </div>
 
-      {/* Target Commitment Bar */}
-      <div className="mt-4 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
-        <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+      {/* Target Commitment Display */}
+      <div className="mt-5 rounded-xl bg-black/40 border border-white/[0.06] p-3.5">
+        <div className="flex items-center justify-between text-xs text-slate-400">
           <span className="flex items-center gap-1.5 font-medium">
-            <Lock className="size-3 text-cyan-400" />
+            <Lock className="size-3.5 text-cyan-400" />
             Locked Commitment Hash:
           </span>
-          <span className="font-mono text-[10px] text-slate-500">persistentCommit</span>
+          <span className="font-mono text-[11px] text-slate-500">persistentCommit</span>
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <code className="font-mono text-[11.5px] text-cyan-300 truncate select-all tracking-tight" title={`0x${targetCommitment}`}>
-            0x{targetCommitment.slice(0, 18)}…{targetCommitment.slice(-16)}
+        <div className="mt-2 flex items-center justify-between gap-2 overflow-hidden">
+          <code className="font-mono text-xs text-cyan-300 truncate max-w-[calc(100%-40px)]">
+            0x{targetCommitment.slice(0, 16)}…{targetCommitment.slice(-16)}
           </code>
           <button
             type="button"
             onClick={handleCopy}
-            className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-            title="Copy Full Hash"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
+            title="Copy Full Commitment Hash"
           >
-            {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+            {copied ? (
+              <Check className="size-3.5 text-emerald-400" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Interactive Solver Input */}
-      <div className="mt-4 space-y-2">
+      {/* Secret Input with Dynamic Match Indicator */}
+      <div className="mt-5 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <label className="flex items-center gap-1.5 font-medium text-slate-300">
-            <Key className="size-3.5 text-violet-400" />
+            <Key className="size-3.5 text-indigo-400" />
             Secret Pre-image Witness:
           </label>
-          <div className="flex items-center gap-2 text-[11px]">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleQuickSolve}
-              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+              className="font-mono text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
             >
               Fill Valid
             </button>
@@ -155,9 +166,10 @@ export function HeroBountyShowcase() {
             <button
               type="button"
               onClick={handleRandomize}
-              className="text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-slate-400 hover:text-slate-300 transition-colors"
             >
-              <RefreshCw className="size-2.5" /> Random
+              <RefreshCw className="size-3" />
+              Random
             </button>
           </div>
         </div>
@@ -170,70 +182,80 @@ export function HeroBountyShowcase() {
               setSecretInput(e.target.value);
               setIsSolved(false);
             }}
-            placeholder="Enter pre-image string…"
-            className="w-full rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 pr-9 font-mono text-xs text-slate-100 placeholder:text-slate-600 outline-none transition-all focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+            placeholder="Type secret solution pre-image…"
+            className="w-full rounded-xl bg-black/40 border border-white/10 px-3.5 py-2.5 font-mono text-xs text-white placeholder:text-slate-600 outline-none transition-all focus:border-cyan-500/60"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             {isMatch ? (
               <CheckCircle2 className="size-4 text-emerald-400" />
             ) : (
-              <div className="size-2 rounded-full bg-amber-500/60" />
+              <Lock className="size-3.5 text-slate-600" />
             )}
           </div>
         </div>
 
-        {/* Real-time constraint indicator */}
+        {/* Live Constraint Verification State */}
         <div className="flex items-center justify-between text-[11px] font-mono pt-1">
-          <span className="text-slate-500">Constraint Check:</span>
+          <span className="text-slate-400">Constraint Check:</span>
           {isMatch ? (
             <span className="text-emerald-400 font-medium">✓ Pre-image matches on-chain commitment</span>
           ) : (
-            <span className="text-amber-400/80">✗ Hash mismatch (proof will revert)</span>
+            <span className="text-amber-400/90 font-medium">✕ Pre-image does not match commitment</span>
           )}
         </div>
       </div>
 
-      {/* Action Button */}
-      <button
-        onClick={handleSimulateProof}
-        disabled={isProving}
-        className={`mt-5 flex w-full items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs font-semibold transition-all duration-200 ${
-          isSolved
-            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-            : "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30"
-        } disabled:opacity-50 disabled:cursor-not-allowed`}
-      >
-        {isProving ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            <span>Computing Halo2 zk-SNARK Proof…</span>
-          </>
-        ) : isSolved ? (
-          <>
-            <Unlock className="size-4 text-emerald-400" />
-            <span>ZK Proof Verified · Escrow Claimed!</span>
-          </>
-        ) : (
-          <>
-            <Zap className="size-4 fill-current" />
-            <span>Generate Proof & Claim Escrow</span>
-          </>
-        )}
-      </button>
+      {/* Action CTA */}
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={handleSimulateProof}
+          disabled={isProving || !secretInput.trim()}
+          className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 px-4 text-xs font-bold transition-all shadow-md active:scale-98 disabled:opacity-50 ${
+            isSolved
+              ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-400"
+              : isMatch
+                ? "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-cyan-500/20 cursor-pointer"
+                : "bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10 cursor-pointer"
+          }`}
+        >
+          {isProving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              <span>Evaluating Halo2 Constraints in Proof Server :6300…</span>
+            </>
+          ) : isSolved ? (
+            <>
+              <Unlock className="size-4 text-emerald-400" />
+              <span>ZK Proof Verified · Escrow Claimed! (+1,250 tDUST)</span>
+            </>
+          ) : isMatch ? (
+            <>
+              <Zap className="size-4" />
+              <span>Synthesize Halo2 Proof & Claim Escrow (+1,250 tDUST)</span>
+            </>
+          ) : (
+            <>
+              <Lock className="size-4" />
+              <span>Verify Pre-image & Synthesize ZK Proof</span>
+            </>
+          )}
+        </button>
+      </div>
 
-      {/* Compact Telemetry Footer */}
-      <div className="mt-4 pt-4 border-t border-white/[0.06] grid grid-cols-3 gap-2 text-[11px] text-slate-400">
+      {/* Protocol Telemetry Mini-Footer */}
+      <div className="mt-5 grid grid-cols-3 gap-2 border-t border-white/[0.06] pt-4 text-center font-mono text-[10px] text-slate-400">
         <div>
-          <span className="text-slate-500 block text-[10px] uppercase">Proof Engine</span>
-          <span className="font-medium text-slate-300">Halo2-BN254</span>
+          <span className="text-slate-500 block uppercase">Proof Engine</span>
+          <span className="text-slate-300 font-semibold">Halo2-BN254</span>
         </div>
         <div>
-          <span className="text-slate-500 block text-[10px] uppercase">Smart Contract</span>
-          <span className="font-medium text-slate-300">Compact v0.22</span>
+          <span className="text-slate-500 block uppercase">Smart Contract</span>
+          <span className="text-slate-300 font-semibold">Compact v0.22</span>
         </div>
         <div>
-          <span className="text-slate-500 block text-[10px] uppercase">Privacy Level</span>
-          <span className="font-medium text-emerald-400">128-bit Zero-Knowledge</span>
+          <span className="text-slate-500 block uppercase">Privacy Level</span>
+          <span className="text-emerald-400 font-semibold">100% Client-Side</span>
         </div>
       </div>
     </div>

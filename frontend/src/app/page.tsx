@@ -60,9 +60,35 @@ export default function Home() {
     setClaiming(b);
   }
 
+  function handleHeroRewardClaimed(amountStars: bigint) {
+    if (wallet) {
+      setWallet((prev) =>
+        prev
+          ? {
+              ...prev,
+              balanceStars: prev.balanceStars + amountStars,
+            }
+          : null,
+      );
+    }
+  }
+
   function handleBountyCreated(newBounty: Bounty) {
     setBounties((prev) => [newBounty, ...prev]);
     setTab("explore");
+    if (wallet) {
+      setWallet((prev) =>
+        prev
+          ? {
+              ...prev,
+              balanceStars:
+                prev.balanceStars > newBounty.rewardStars
+                  ? prev.balanceStars - newBounty.rewardStars
+                  : 0n,
+            }
+          : null,
+      );
+    }
   }
 
   function handleClaimSuccess(claimedBounty: Bounty) {
@@ -70,6 +96,16 @@ export default function Home() {
     setBounties((prev) =>
       prev.map((b) => (b.id === claimedBounty.id ? { ...b, isClaimed: true } : b)),
     );
+    if (wallet) {
+      setWallet((prev) =>
+        prev
+          ? {
+              ...prev,
+              balanceStars: prev.balanceStars + claimedBounty.rewardStars,
+            }
+          : null,
+      );
+    }
   }
 
   // Filtered & Sorted Bounties
@@ -171,7 +207,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.12, duration: 0.4 }}
             >
-              <HeroBountyShowcase />
+              <HeroBountyShowcase onRewardClaimed={handleHeroRewardClaimed} />
             </motion.div>
           </section>
 
