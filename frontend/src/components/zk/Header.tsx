@@ -156,9 +156,9 @@ export function Header({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -6, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="glass absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl p-1.5 shadow-2xl z-50"
+                  className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0d111a] p-1.5 shadow-2xl z-50"
                 >
-                  <p className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <p className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
                     Select Midnight Network
                   </p>
                   {(Object.keys(networkNames) as NetworkType[]).map((net) => (
@@ -173,23 +173,23 @@ export function Header({
                       }}
                       className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors ${
                         currentNetwork === net
-                          ? "bg-primary/20 text-primary font-semibold"
-                          : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+                          ? "bg-cyan-500/15 text-cyan-400 font-semibold"
+                          : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span
                           className={`size-2 rounded-full ${
                             net === "preprod"
-                              ? "bg-cyan"
+                              ? "bg-cyan-400"
                               : net === "preview"
-                                ? "bg-violet"
-                                : "bg-signal"
+                                ? "bg-violet-400"
+                                : "bg-emerald-400"
                           }`}
                         />
                         <span>{networkNames[net].name}</span>
                       </div>
-                      {currentNetwork === net && <CheckCircle2 className="size-3.5 text-primary" />}
+                      {currentNetwork === net && <CheckCircle2 className="size-3.5 text-cyan-400" />}
                     </button>
                   ))}
                 </motion.div>
@@ -215,23 +215,23 @@ export function Header({
             <div className="relative">
               <button
                 onClick={() => setOpen((o) => !o)}
-                className="glass inline-flex items-center gap-2.5 rounded-xl px-3.5 py-1.5 text-xs transition-all hover:border-primary/50 hover:shadow-[0_0_15px_rgba(108,92,231,0.25)] sm:text-sm"
+                className="inline-flex items-center gap-2.5 rounded-xl border border-white/10 bg-[#0d111a] hover:border-white/20 px-3 py-1.5 text-xs text-white transition-all shadow-sm sm:text-sm"
               >
-                <span className="pulse-dot size-2 rounded-full bg-signal" />
-                <span className="font-mono font-medium">{truncate(wallet.address, 4, 4)}</span>
+                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-mono font-medium text-slate-200">{truncate(wallet.address, 4, 4)}</span>
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowStars((s) => !s);
                   }}
-                  className="rounded-lg border border-cyan/30 bg-cyan/10 px-2 py-0.5 font-mono text-xs text-cyan transition-colors hover:bg-cyan/20 cursor-pointer"
+                  className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-xs text-cyan-400 transition-colors hover:bg-cyan-500/20 cursor-pointer"
                   title="Click to toggle between tDUST and Stars (1 NIGHT = 1,000,000 Stars)"
                 >
                   {showStars
                     ? `${wallet.balanceStars.toLocaleString()} Stars`
                     : `${balanceNight.toFixed(2)} tDUST`}
                 </span>
-                <ChevronDown className="size-3.5 text-muted-foreground" />
+                <ChevronDown className="size-3.5 text-slate-400" />
               </button>
 
               <AnimatePresence>
@@ -241,18 +241,18 @@ export function Header({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
                     transition={{ duration: 0.16 }}
-                    className="glass absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl p-2.5 shadow-2xl z-50"
+                    className="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0d111a] p-2.5 shadow-2xl z-50"
                   >
-                    <div className="rounded-xl border border-border/60 bg-background/50 p-3">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    <div className="rounded-xl border border-white/[0.08] bg-[#07090e] p-3">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                         Shielded Coin Public Key
                       </p>
-                      <p className="mt-1 break-all font-mono text-[11px] text-cyan">
+                      <p className="mt-1 break-all font-mono text-[11px] text-cyan-400">
                         {wallet.shieldedKey}
                       </p>
-                      <div className="mt-2.5 flex items-center justify-between border-t border-border/40 pt-2 text-xs">
-                        <span className="text-muted-foreground">Shielded Balance:</span>
-                        <span className="font-mono font-bold text-signal">
+                      <div className="mt-2.5 flex items-center justify-between border-t border-white/[0.06] pt-2 text-xs">
+                        <span className="text-slate-400">Shielded Balance:</span>
+                        <span className="font-mono font-bold text-emerald-400">
                           {balanceNight.toFixed(2)} tDUST
                         </span>
                       </div>
@@ -262,7 +262,7 @@ export function Header({
                       <button
                         onClick={requestFaucet}
                         disabled={faucetLoading}
-                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs text-cyan transition-colors hover:bg-cyan/10"
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-xs text-cyan-400 transition-colors hover:bg-cyan-500/10"
                       >
                         <div className="flex items-center gap-2">
                           <Coins className="size-4" />
@@ -276,9 +276,9 @@ export function Header({
                           navigator.clipboard?.writeText(wallet.address);
                           toast.success("Shielded address copied to clipboard");
                         }}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-foreground transition-colors hover:bg-secondary"
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                       >
-                        <Copy className="size-4 text-primary" /> Copy Full Address
+                        <Copy className="size-4 text-cyan-400" /> Copy Full Address
                       </button>
 
                       <button
@@ -287,7 +287,7 @@ export function Header({
                           setOpen(false);
                           toast("Midnight wallet disconnected");
                         }}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-destructive transition-colors hover:bg-destructive/10"
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/10"
                       >
                         <LogOut className="size-4" /> Disconnect Session
                       </button>
