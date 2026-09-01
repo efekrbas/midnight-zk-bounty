@@ -15,9 +15,8 @@ import { MidnightGlyph } from "./MidnightGlyph";
 import {
   getMidnightWalletConnector,
   connectRealMidnightWallet,
+  type WalletState,
 } from "@/lib/midnight-wallet";
-import { toast } from "sonner";
-import { type WalletState } from "./Header";
 
 export function WalletConnectModal({
   isOpen,

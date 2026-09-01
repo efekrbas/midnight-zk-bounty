@@ -19,18 +19,11 @@ import {
   getMidnightWalletConnector,
   connectRealMidnightWallet,
   type MidnightServiceUriConfig,
+  type WalletState,
+  type NetworkType,
 } from "@/lib/midnight-wallet";
 
-export type NetworkType = "preprod" | "preview" | "localnet";
-
-export type WalletState = {
-  address: string;
-  shieldedKey: string;
-  balanceStars: bigint; // 1 NIGHT = 1,000,000 Stars
-  network: NetworkType;
-  isRealExtension?: boolean;
-  serviceUris?: MidnightServiceUriConfig;
-} | null;
+export type { WalletState, NetworkType };
 
 export function Header({
   wallet,

@@ -1,6 +1,8 @@
 // Midnight Network DApp Connector & Wallet Client
 // Conforms to Midnight Network CIP-30 / 1AM Wallet Standard & Cardano Lace Extension
 
+export type NetworkType = "preprod" | "preview" | "localnet";
+
 export interface MidnightServiceUriConfig {
   proofServerUri: string;
   indexerUri: string;
@@ -8,12 +10,22 @@ export interface MidnightServiceUriConfig {
   substrateNodeUri: string;
 }
 
+export type WalletState = {
+  address: string;
+  shieldedKey: string;
+  balanceStars: bigint; // 1 NIGHT = 1,000,000 Stars
+  network: NetworkType;
+  isRealExtension?: boolean;
+  serviceUris?: MidnightServiceUriConfig;
+  walletName?: string;
+} | null;
+
 export interface MidnightAccountState {
   address: string;
   shieldedCoinPublicKey: string;
   encryptionPublicKey?: string;
   balances?: Record<string, bigint>;
-  network?: "preprod" | "preview" | "localnet";
+  network?: NetworkType;
 }
 
 export interface GenericWalletConnector {
@@ -76,16 +88,8 @@ export function getMidnightWalletConnector(): {
  * Connect to real Midnight / Lace browser extension
  */
 export async function connectRealMidnightWallet(
-  targetNetwork: "preprod" | "preview" | "localnet" = "preprod",
-): Promise<{
-  isRealExtension: boolean;
-  address: string;
-  shieldedKey: string;
-  balanceStars: bigint;
-  network: "preprod" | "preview" | "localnet";
-  serviceUris?: MidnightServiceUriConfig;
-  walletName?: string;
-}> {
+  targetNetwork: NetworkType = "preprod",
+): Promise<NonNullable<WalletState>> {
   const detected = getMidnightWalletConnector();
 
   if (detected) {
