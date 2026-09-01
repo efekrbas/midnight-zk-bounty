@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false,
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -17,11 +17,12 @@ const nextConfig = {
         child_process: false,
       };
     }
+
     config.experiments = {
       ...config.experiments,
-      asyncWebAssembly: true,
       topLevelAwait: true,
     };
+
     return config;
   },
 };
