@@ -1,5 +1,5 @@
 {
-  "name": "midnight-zk-bounty-monorepo",
+  "name": "midnight-zk-bounty",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -7,5 +7,10 @@
     "build": "npm --prefix frontend run build",
     "start": "npm --prefix frontend run start",
     "test:contract": "npm --prefix contract test"
+  },
+  "dependencies": {
+    "next": "^15.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
