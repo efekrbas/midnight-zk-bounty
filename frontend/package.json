@@ -1,0 +1,36 @@
+{
+  "name": "midnight-zk-bounty-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.4.7",
+    "lucide-react": "^0.475.0",
+    "next": "^15.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^2.0.1",
+    "tailwind-merge": "^3.0.1",
+    "three": "^0.174.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.7",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@types/three": "^0.174.0",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^4.0.7",
+    "typescript": "^5.7.3"
+  }
+}

@@ -16,9 +16,9 @@
     }
   },
   "scripts": {
-    "compact": "wsl -e bash -lc \"cd '/mnt/c/Users/priyal Raut/OneDrive/Desktop/midnight-zk-bounty/contract' && compact compile src/bounty.compact src/managed/bounty\"",
-    "test": "node --experimental-vm-modules node_modules/vitest/vitest.mjs run",
-    "test:compile": "npm run compact && node --experimental-vm-modules node_modules/vitest/vitest.mjs run",
+    "compact": "compact compile src/bounty.compact src/managed/bounty",
+    "test": "vitest run",
+    "test:compile": "npm run compact && vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
