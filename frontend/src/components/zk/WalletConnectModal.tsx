@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -9,8 +9,7 @@ import {
   Zap,
   ExternalLink,
   CheckCircle2,
-  AlertCircle,
-  Laptop,
+  RefreshCw,
 } from "lucide-react";
 import { MidnightGlyph } from "./MidnightGlyph";
 import {
@@ -29,8 +28,16 @@ export function WalletConnectModal({
   onClose: () => void;
   onConnected: (state: NonNullable<WalletState>) => void;
 }) {
-  const hasExtension = typeof window !== "undefined" && !!getMidnightWalletConnector();
+  const [detectedConnector, setDetectedConnector] = useState<ReturnType<typeof getMidnightWalletConnector>>(null);
   const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Probe window.cardano.lace / window.midnight
+      const conn = getMidnightWalletConnector();
+      setDetectedConnector(conn);
+    }
+  }, [isOpen]);
 
   async function handleConnectExtension() {
     setConnecting(true);
@@ -38,9 +45,9 @@ export function WalletConnectModal({
       const res = await connectRealMidnightWallet("preprod");
       onConnected(res);
       onClose();
-      toast.success("Connected with Midnight Lace Extension!");
+      toast.success(`Connected with ${res.walletName || "Lace"}!`);
     } catch (err: any) {
-      toast.error(err?.message || "Connection rejected in Lace wallet");
+      toast.error(err?.message || "Lace connection cancelled");
     } finally {
       setConnecting(false);
     }
@@ -68,6 +75,8 @@ export function WalletConnectModal({
     toast.success("Connected via Preprod Testnet Bridge (Demo Account)");
   }
 
+  const hasExtension = !!detectedConnector;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -77,14 +86,14 @@ export function WalletConnectModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
           />
 
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0d111a] p-6 shadow-2xl z-10"
+            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/[0.12] bg-[#0d111a] p-6 shadow-2xl z-10"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -92,8 +101,8 @@ export function WalletConnectModal({
                   <MidnightGlyph className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Connect Midnight Wallet</h3>
-                  <p className="text-xs text-slate-400">CIP-30 / 1AM Protocol Standard</p>
+                  <h3 className="text-base font-bold text-white">Connect Lace Wallet</h3>
+                  <p className="text-xs text-slate-400">Midnight Network & Cardano CIP-30</p>
                 </div>
               </div>
 
@@ -107,11 +116,11 @@ export function WalletConnectModal({
             </div>
 
             <div className="mt-6 space-y-3">
-              {/* Option 1: Real Midnight Lace Extension */}
+              {/* Option 1: Detected Lace Extension */}
               <div
                 className={`rounded-2xl border p-4 transition-all ${
                   hasExtension
-                    ? "border-cyan-500/30 bg-cyan-500/5 hover:border-cyan-400/50"
+                    ? "border-cyan-500/40 bg-cyan-500/10 shadow-lg shadow-cyan-500/10"
                     : "border-white/10 bg-white/[0.02]"
                 }`}
               >
@@ -122,12 +131,12 @@ export function WalletConnectModal({
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-white">
-                        Midnight Lace Extension
+                        {detectedConnector?.name || "Lace Extension"}
                       </h4>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-300">
                         {hasExtension
-                          ? "Extension detected in your browser"
-                          : "Chrome extension not detected"}
+                          ? "Extension active in your browser"
+                          : "Lace extension not detected in window"}
                       </p>
                     </div>
                   </div>
@@ -139,7 +148,7 @@ export function WalletConnectModal({
                         : "bg-amber-500/15 text-amber-400 border border-amber-500/20"
                     }`}
                   >
-                    {hasExtension ? "Installed" : "Not Found"}
+                    {hasExtension ? "Detected" : "Not Found"}
                   </span>
                 </div>
 
@@ -149,21 +158,40 @@ export function WalletConnectModal({
                       type="button"
                       onClick={handleConnectExtension}
                       disabled={connecting}
-                      className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 py-2 px-4 text-xs font-bold text-slate-950 transition-colors shadow-sm"
+                      className="w-full rounded-xl bg-cyan-500 hover:bg-cyan-400 py-2.5 px-4 text-xs font-bold text-slate-950 transition-all shadow-md active:scale-98"
                     >
-                      Connect Hardware / Extension
+                      {connecting ? "Waiting for Lace Approval…" : "Connect Lace Wallet"}
                     </button>
                   ) : (
-                    <a
-                      href="https://docs.midnight.network/develop/tutorial/building/prereqs#midnight-lace-wallet"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 py-2 px-4 text-xs font-semibold text-slate-200 transition-colors"
-                    >
-                      <Download className="size-3.5 text-cyan-400" />
-                      <span>Download Midnight Lace (Guide)</span>
-                      <ExternalLink className="size-3 text-slate-400 ml-1" />
-                    </a>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const conn = getMidnightWalletConnector();
+                          setDetectedConnector(conn);
+                          if (conn) {
+                            toast.success("Lace detected!");
+                          } else {
+                            toast.error("Please refresh the page after opening Lace extension");
+                          }
+                        }}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 py-2 px-4 text-xs font-semibold text-slate-200 transition-colors"
+                      >
+                        <RefreshCw className="size-3.5 text-cyan-400" />
+                        <span>Re-detect Lace Extension</span>
+                      </button>
+
+                      <a
+                        href="https://www.lace.io/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/5 py-1.5 px-4 text-[11px] text-slate-400 transition-colors"
+                      >
+                        <Download className="size-3 text-slate-500" />
+                        <span>Download Lace from lace.io</span>
+                        <ExternalLink className="size-3 text-slate-500 ml-0.5" />
+                      </a>
+                    </div>
                   )}
                 </div>
               </div>
@@ -195,9 +223,9 @@ export function WalletConnectModal({
                     type="button"
                     onClick={handleConnectBridge}
                     disabled={connecting}
-                    className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2 px-4 text-xs font-bold text-white transition-colors shadow-sm"
+                    className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-500 py-2.5 px-4 text-xs font-bold text-white transition-colors shadow-sm"
                   >
-                    Connect Testnet Bridge (Instant)
+                    Connect Testnet Bridge (Instant Sandbox)
                   </button>
                 </div>
               </div>
