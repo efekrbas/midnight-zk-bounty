@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Lock, Loader2, Check, Zap, RefreshCw, Key, ShieldCheck, Copy } from "lucide-react";
+import { Lock, Loader2, Check, Zap, RefreshCw, Key, ShieldCheck, Copy, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { persistentCommit, generateRandomNonce, type Bounty } from "@/lib/zk";
 import { type WalletState } from "@/lib/midnight-wallet";
@@ -33,10 +33,10 @@ export function CreateBounty({
   wallet: WalletState;
   onBountyCreated?: (bounty: Bounty) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState("BLS12-381 Polynomial Constraint Soundness");
+  const [description, setDescription] = useState("Prove pre-image knowledge satisfying Halo2 circuit constraints without revealing private witness data.");
   const [reward, setReward] = useState("750");
-  const [secret, setSecret] = useState("");
+  const [secret, setSecret] = useState(() => `zk-preimage-${generateRandomNonce().slice(0, 12)}`);
   const [nonce, setNonce] = useState(() => generateRandomNonce());
   const [circuitType, setCircuitType] = useState<"halo2-bn254" | "compact-zk">("halo2-bn254");
   const [state, setState] = useState<"idle" | "signing" | "done">("idle");
@@ -47,7 +47,7 @@ export function CreateBounty({
 
   function randomizeSecretAndNonce() {
     const randomHex = generateRandomNonce();
-    setSecret(`midnight-preimage-${randomHex.slice(0, 16)}`);
+    setSecret(`zk-preimage-${randomHex.slice(0, 12)}`);
     setNonce(generateRandomNonce());
     toast.success("Generated fresh random secret & salt nonce");
   }
@@ -57,8 +57,12 @@ export function CreateBounty({
       toast.error("Please connect your Midnight 1AM / Lace wallet first");
       return;
     }
-    if (!title.trim() || !secret.trim()) {
-      toast.error("Bounty title and secret solution pre-image are required");
+    if (!title.trim()) {
+      toast.error("Please enter a bounty title");
+      return;
+    }
+    if (!secret.trim()) {
+      toast.error("Please enter or generate a secret solution pre-image");
       return;
     }
 
@@ -104,9 +108,9 @@ export function CreateBounty({
 
     setTimeout(() => {
       setState("idle");
-      setTitle("");
-      setDescription("");
-      setSecret("");
+      setTitle("Poseidon Merkle Tree Branch Membership Challenge");
+      setDescription("Prove cryptographic leaf knowledge inside sparse Merkle accumulator.");
+      setSecret(`zk-preimage-${generateRandomNonce().slice(0, 12)}`);
       setNonce(generateRandomNonce());
     }, 2800);
   }
@@ -201,14 +205,21 @@ export function CreateBounty({
                 <Key className="size-3.5 text-cyan-400" />
                 Secret Solution Pre-image (Keep Private) *
               </label>
-              <span className="text-[10px] text-slate-500 font-mono">Plaintext NEVER sent on-chain</span>
+              <button
+                type="button"
+                onClick={randomizeSecretAndNonce}
+                className="inline-flex items-center gap-1 font-mono text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                <Sparkles className="size-3" />
+                <span>Auto-Generate</span>
+              </button>
             </div>
             <input
               type="text"
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder="Type or generate the solution secret pre-image…"
-              className={fieldClass}
+              className={`${fieldClass} font-mono ${!secret.trim() ? "border-red-500/50" : ""}`}
             />
           </div>
 
